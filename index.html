@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Train Delay Propagation Simulation | SE4042</title>
+<style>
+:root{--ink:#172033;--muted:#637083;--line:#dce2ea;--panel:#f6f8fb;--blue:#2458a6;--blue2:#dbeafe;--orange:#b45309;--green:#18794e}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.5}
+header{background:#163b78;color:#fff;padding:24px max(18px,calc((100% - 1120px)/2))}
+header h1{font-size:clamp(1.35rem,3vw,2rem);margin:0 0 6px}header p{margin:0;color:#e3ecfb}
+main{max-width:1120px;margin:22px auto;padding:0 16px 38px;display:grid;gap:16px}
+.card{border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff;box-shadow:0 2px 8px #17203308}
+h2{font-size:1.12rem;margin:0 0 12px}p.small,.small{font-size:.9rem;color:var(--muted)}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+label{font-weight:650;display:block;margin-bottom:5px}.value{color:var(--blue);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+button{border:1px solid var(--line);background:#fff;padding:9px 15px;border-radius:9px;font-weight:650;cursor:pointer;color:var(--ink)}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}button:disabled{opacity:.5;cursor:not-allowed}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.metric{background:var(--panel);border-radius:10px;padding:12px}.metric .num{font-size:1.5rem;font-weight:750;font-variant-numeric:tabular-nums}.metric .lab{font-size:.82rem;color:var(--muted)}
+canvas{width:100%;height:280px;display:block;background:#fff;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{text-align:left;padding:9px;border-bottom:1px solid var(--line);white-space:nowrap}th{background:var(--panel)}
+.tablewrap{overflow-x:auto}.status{padding:8px 10px;border-radius:8px;background:var(--blue2);color:#173d76;font-size:.9rem}
+details summary{font-weight:700;cursor:pointer}footer{color:var(--muted);font-size:.85rem;padding:0 4px}
+@media(max-width:600px){.card{padding:13px}th,td{padding:7px;font-size:.82rem}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Train-Delay Propagation Simulation</h1>
+  <p>SE4042 · Monte Carlo model for a simplified Maradana → Panadura corridor</p>
+</header>
+<main>
+  <section class="card">
+    <h2>Scenario controls</h2>
+    <p class="small">Change the assumptions and run a simulated operating period. This is a teaching model, not a live railway tracker.</p>
+    <div class="controls">
+      <div><label for="buffer">Recovery buffer: <span id="bufferVal" class="value">2.0</span> min</label><input id="buffer" type="range" min="0" max="5" step="0.5" value="2"></div>
+      <div><label for="initial">Initial delay at Maradana: <span id="initialVal" class="value">0</span> min</label><input id="initial" type="range" min="0" max="10" step="1" value="0"></div>
+      <div><label for="variability">Disturbance variability: <span id="variabilityVal" class="value">1.0</span></label><input id="variability" type="range" min="0" max="2" step="0.1" value="1"></div>
+      <div><label for="replications">Monte Carlo replications: <span id="replicationsVal" class="value">500</span></label><input id="replications" type="range" min="100" max="2000" step="100" value="500"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="start">Start simulation</button>
+      <button id="pause">Pause</button>
+      <button id="reset">Reset</button>
+    </div>
+    <p id="status" class="status" role="status">Ready. The reference baseline uses zero disturbances and reproduces the timetable shown below.</p>
+  </section>
+
+  <section class="card">
+    <h2>Simulation results</h2>
+    <div class="metrics">
+      <div class="metric"><div class="num" id="mean">—</div><div class="lab">Mean final delay (min)</div></div>
+      <div class="metric"><div class="num" id="severe">—</div><div class="lab">Final delay &gt; 10 min</div></div>
+      <div class="metric"><div class="num" id="ci">—</div><div class="lab">95% CI for mean (min)</div></div>
+      <div class="metric"><div class="num" id="nresults">—</div><div class="lab">Train outcomes simulated</div></div>
+    </div>
+    <p class="small">Confidence intervals describe Monte Carlo sampling uncertainty under the illustrative assumptions. They are not real-world prediction intervals.</p>
+    <canvas id="chart" width="1000" height="360" aria-label="Bar chart of final arrival delays by train"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>Baseline timetable reference</h2>
+    <p class="small">The times below were transcribed from the five screenshots supplied for this assignment. The zero-disturbance baseline reproduces the scheduled final arrival times exactly.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Train</th><th>Maradana dep.</th><th>Colombo Fort arr./dep.</th><th>Dehiwala arr./dep.</th><th>Ratmalana arr./dep.</th><th>Moratuwa arr./dep.</th><th>Panadura arr.</th><th>Scheduled journey (min)</th></tr></thead>
+      <tbody id="timetable"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <details open>
+      <summary>About the model and assumptions</summary>
+      <p>The model uses six stations common to all five supplied services. A three-state Markov chain (low, moderate, high disruption) controls illustrative extra disturbances. Running-time noise, exponential dwell-time variation, the transition matrix, and the 3-minute minimum departure headway are assumptions—not measured parameters for these specific trains.</p>
+      <p>The Sri Lanka Railways Administration Report 2023 and the Auditor General's Annual Report 2024 provide system-wide punctuality context. They do not provide the train-by-train histories needed to estimate route-specific Markov transitions or dwell-time distributions. Therefore, the simulation should not be described as calibrated to actual Maradana–Panadura delays.</p>
+      <p><strong>Notebook reference:</strong> in the Colab notebook, the deterministic limiting-case verification checks that the five supplied timetable rows are reproduced when stochastic disturbances, initial delay, recovery buffer and headway effects are disabled. This page displays the same scheduled baseline reference and allows assumption-based scenarios to be explored.</p>
+      <p class="small">Sources: <a href="https://railway.gov.lk/web/images/pdf/admin%20report_2023.pdf" target="_blank" rel="noopener">Sri Lanka Railways Administration Report 2023</a> · <a href="https://auditorgeneral.gov.lk/web/images/audit-reports/upload/2024/Annual_Report/Annual-Report-2024-English-Web_compressed.pdf" target="_blank" rel="noopener">Auditor General Annual Report 2024</a> · <a href="https://www.railway.gov.lk/web/images/news/2025-12-02%20all%20eng.pdf" target="_blank" rel="noopener">Sri Lanka Railways timetable notice</a>.</p>
+    </details>
+  </section>
+  <footer>SE4042 project prototype · Run locally by double-clicking index.html · No server or API required.</footer>
+</main>
+<script>
+const stations=["Maradana","Colombo Fort","Dehiwala","Ratmalana","Moratuwa","Panadura"];
+const ids=["T1 (05:05)","T2 (05:52)","T3 (06:28)","T4 (07:00)","T5 (07:50)"];
+// minutes after 05:00
+const arr=[
+ [NaN,10,25,33,41,53],
+ [NaN,56,76,84,94,107],
+ [NaN,92,112,120,130,143],
+ [NaN,124,145,151,158,171],
+ [NaN,174,196,204,214,227]
+];
+const dep=[
+ [5,11,26,34,42,NaN],
+ [52,57,77,85,95,NaN],
+ [88,93,113,121,131,NaN],
+ [120,125,146,152,159,NaN],
+ [170,175,197,205,215,NaN]
+];
+const P=[[.70,.25,.05],[.30,.50,.20],[.10,.30,.60]];
+const ranges=[[0,.5],[.5,2],[2,5]];
+let running=false, paused=false, timer=null, lastDelays=[0,0,0,0,0];
+function clock(m){if(!Number.isFinite(m))return "—";let t=Math.round(m)+300;return String(Math.floor(t/60)%24).padStart(2,"0")+":"+String(t%60).padStart(2,"0")}
+function renderTable(){
+ const body=document.getElementById("timetable");
+ body.innerHTML=ids.map((id,i)=>`<tr><td>${id}</td><td>${clock(dep[i][0])}</td><td>${clock(arr[i][1])}/${clock(dep[i][1])}</td><td>${clock(arr[i][2])}/${clock(dep[i][2])}</td><td>${clock(arr[i][3])}/${clock(dep[i][3])}</td><td>${clock(arr[i][4])}/${clock(dep[i][4])}</td><td>${clock(arr[i][5])}</td><td>${arr[i][5]-dep[i][0]}</td></tr>`).join("");
+}
+function setStatus(s){document.getElementById("status").textContent=s}
+function simPeriod(buffer, initial, variability, rng){
+ const n=5,m=6, actualA=Array.from({length:n},()=>Array(m).fill(NaN)),actualD=Array.from({length:n},()=>Array(m).fill(NaN)),ad=Array.from({length:n},()=>Array(m).fill(NaN)),dd=Array.from({length:n},()=>Array(m).fill(NaN));
+ for(let i=0;i<n;i++){
+   let d0=dep[i][0]+initial;
+   if(i>0)d0=Math.max(d0,actualD[i-1][0]+3);
+   actualD[i][0]=d0;dd[i][0]=d0-dep[i][0];
+   let regime=0;
+   for(let s=1;s<m;s++){
+     const runNoise=variability*(rng()*2-1)*1.8;
+     const r=rng(), cum=P[regime][0];
+     const next=r<cum?0:(r<cum+P[regime][1]?1:2);
+     regime=next;
+     const shock=ranges[regime][0]+rng()*(ranges[regime][1]-ranges[regime][0])*variability;
+     const arrivalDelay=Math.max(0,dd[i][s-1]+runNoise+shock-buffer);
+     let a=arr[i][s]+arrivalDelay;
+     if(s<m-1){
+       const dwell=variability*(-Math.log(Math.max(1e-9,rng())))*.8;
+       const dwellScheduled=dep[i][s]-arr[i][s];
+       let d=Math.max(dep[i][s],a+dwellScheduled+dwell);
+       if(i>0)d=Math.max(d,actualD[i-1][s]+3);
+       actualD[i][s]=d;dd[i][s]=d-dep[i][s];
+     }
+     actualA[i][s]=a;ad[i][s]=arrivalDelay;
+   }
+ }
+ return ad.map(row=>row[5]);
+}
+function makeRng(seed){let x=seed>>>0;return ()=>{x^=x<<13;x^=x>>>17;x^=x<<5;return (x>>>0)/4294967296}}
+function wilson(k,n){const z=1.96,p=k/n,d=1+z*z/n,c=(p+z*z/(2*n))/d,h=z*Math.sqrt((p*(1-p)/n)+(z*z/(4*n*n)))/d;return [Math.max(0,c-h),Math.min(1,c+h)]}
+function drawChart(values){
+ const canvas=document.getElementById("chart"),ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;
+ ctx.clearRect(0,0,W,H);const pad={l:65,r:20,t:25,b:55},plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+ const max=Math.max(10,...values)*1.15;
+ ctx.strokeStyle="#dce2ea";ctx.fillStyle="#637083";ctx.font="14px system-ui";
+ for(let k=0;k<=5;k++){let y=pad.t+plotH*k/5;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();ctx.fillText((max*(1-k/5)).toFixed(1),12,y+5)}
+ const bw=plotW/(values.length*1.7);
+ values.forEach((v,i)=>{let x=pad.l+(i+.5)*plotW/values.length-bw/2,y=pad.t+plotH*(1-v/max);ctx.fillStyle="#2458a6";ctx.fillRect(x,y,bw,pad.t+plotH-y);ctx.fillStyle="#172033";ctx.fillText("T"+(i+1),x+bw/2-10,H-24);ctx.fillText(v.toFixed(1),x+bw/2-12,y-7)});
+ ctx.save();ctx.translate(18,pad.t+plotH/2);ctx.rotate(-Math.PI/2);ctx.fillStyle="#172033";ctx.fillText("Final arrival delay (minutes)",0,0);ctx.restore();
+}
+function setMetrics(samples){
+ const n=samples.length,mean=samples.reduce((a,b)=>a+b,0)/n;
+ const variance=samples.reduce((a,b)=>a+(b-mean)**2,0)/(n-1),se=Math.sqrt(variance/n);
+ const k=samples.filter(x=>x>10).length,ci=wilson(k,n);
+ document.getElementById("mean").textContent=mean.toFixed(2);
+ document.getElementById("severe").textContent=(100*k/n).toFixed(1)+"%";
+ document.getElementById("ci").textContent=(mean-1.96*se).toFixed(2)+"–"+(mean+1.96*se).toFixed(2);
+ document.getElementById("nresults").textContent=n.toLocaleString();
+ const byTrain=[];for(let i=0;i<5;i++){let vals=[];for(let j=i;j<samples.length;j+=5)vals.push(samples[j]);byTrain.push(vals.reduce((a,b)=>a+b,0)/vals.length)}
+ lastDelays=byTrain;drawChart(byTrain);
+}
+function run(){
+ if(running&&!paused)return;
+ running=true;paused=false;
+ document.getElementById("start").disabled=true;document.getElementById("pause").disabled=false;
+ const b=+document.getElementById("buffer").value,init=+document.getElementById("initial").value,v=+document.getElementById("variability").value,N=+document.getElementById("replications").value;
+ document.getElementById("bufferVal").textContent=b.toFixed(1);document.getElementById("initialVal").textContent=init;document.getElementById("variabilityVal").textContent=v.toFixed(1);document.getElementById("replicationsVal").textContent=N;
+ setStatus("Running Monte Carlo scenarios…");
+ // Small chunks make Pause responsive.
+ let rep=0, outcomes=[], rng=makeRng(20261028);
+ function chunk(){
+   if(paused){setStatus("Paused. Press Start simulation to continue with a fresh run.");running=false;document.getElementById("start").disabled=false;return}
+   const stop=Math.min(rep+25,N);
+   for(;rep<stop;rep++)outcomes.push(...simPeriod(b,init,v,rng));
+   setMetrics(outcomes);
+   if(rep<N){timer=setTimeout(chunk,0)}
+   else{running=false;document.getElementById("start").disabled=false;setStatus(`Completed ${N.toLocaleString()} replications (${outcomes.length.toLocaleString()} train outcomes). Results are conditional on the illustrative assumptions.`)}
+ }
+ chunk();
+}
+function reset(){
+ if(timer)clearTimeout(timer);running=false;paused=false;
+ document.getElementById("start").disabled=false;document.getElementById("pause").disabled=false;
+ document.getElementById("buffer").value=2;document.getElementById("initial").value=0;document.getElementById("variability").value=1;document.getElementById("replications").value=500;
+ document.getElementById("bufferVal").textContent="2.0";document.getElementById("initialVal").textContent="0";document.getElementById("variabilityVal").textContent="1.0";document.getElementById("replicationsVal").textContent="500";
+ const journeys=dep.map((row,i)=>arr[i][5]-row[0]);lastDelays=[0,0,0,0,0];setMetrics(journeys.map(x=>0));drawChart([0,0,0,0,0]);
+ document.getElementById("mean").textContent="0.00";document.getElementById("severe").textContent="0.0%";document.getElementById("ci").textContent="0.00–0.00";document.getElementById("nresults").textContent="Baseline";
+ setStatus("Reset to the deterministic baseline. The supplied scheduled arrival times are unchanged.");
+}
+document.getElementById("start").addEventListener("click",run);
+document.getElementById("pause").addEventListener("click",()=>{paused=true;if(timer)clearTimeout(timer);setStatus("Pause requested.")});
+document.getElementById("reset").addEventListener("click",reset);
+["buffer","initial","variability","replications"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{
+ const x=document.getElementById(id),out=document.getElementById(id+"Val");
+ out.textContent=id==="buffer"||id==="variability"?Number(x.value).toFixed(1):x.value;
+}));
+renderTable();drawChart([0,0,0,0,0]);setMetrics([0,0,0,0,0]);
+document.getElementById("mean").textContent="0.00";document.getElementById("severe").textContent="0.0%";document.getElementById("ci").textContent="0.00–0.00";document.getElementById("nresults").textContent="Baseline";
+document.getElementById("pause").disabled=true;
+</script>
+</body>
+</html>
