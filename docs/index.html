@@ -42,12 +42,12 @@ details summary{font-weight:700;cursor:pointer}footer{color:var(--muted);font-si
   <section class="card">
     <h2>Research question</h2>
     <p>How do initial train delays, stochastic station dwell times and timetable recovery buffers affect delay propagation and the probability of significant delays?</p>
-    <p class="small">This prototype simulates five selected train services across the six common stations between Maradana and Panadura. It uses Monte Carlo simulation and a Markov chain to investigate how initial delays, random operating disturbances and recovery buffers influence train-delay propagation. The model uses illustrative assumptions and is intended for simulation and analysis.</p>
+    <p class="small">This prototype simulates five selected train services across the six common stations between Maradana and Panadura. It uses <strong>Monte Carlo</strong> simulation and a <strong>Markov chain</strong> to investigate how initial delays, random operating disturbances and recovery buffers influence train-delay propagation. The model uses illustrative assumptions and is intended for <strong>simulation and analysis</strong>.</p>
   </section>
 
   <section class="card">
     <h2>Scenario controls</h2>
-    <p class="small">Change the assumptions and run a simulated operating period. This is a teaching model, not a live railway tracker.</p>
+    <p class="small">Change the assumptions and run a simulated operating period.</p>
     <div class="controls">
       <div><label for="buffer">Recovery buffer: <span id="bufferVal" class="value">2.0</span> min</label><input id="buffer" type="range" min="0" max="5" step="0.5" value="2"></div>
       <div><label for="initial">Initial delay at Maradana: <span id="initialVal" class="value">0</span> min</label><input id="initial" type="range" min="0" max="10" step="1" value="0"></div>
