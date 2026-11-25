@@ -52,28 +52,28 @@ The following are modelling assumptions, not measured train-level parameters:
 | $h$ | Minimum departure headway | min | 3 |
 | $n$ | Monte Carlo replications | replications | 2,000 |
 
+
 ## 3. Model equations
 
-For train $i$ travelling from station $s$ to $s+1$, the propagated
-arrival delay is:
+For train $i$ travelling from station $s$ to $s+1$, the propagated arrival delay is:
 
 $$
-d^A_{i,s+1}
-=
-\max\left(0,\ d^D_{i,s}+\epsilon_{i,s}+q_{z_{i,s+1}}-b\right).
+d^A_{i,s+1} = \max\left(0,\ d^D_{i,s} + \epsilon_{i,s} + q_{z_{i,s+1}} - b\right)
 $$
 
 The operating regime follows the Markov transition rule:
 
 $$
-\Pr(z_{i,s+1}=j\mid z_{i,s}=k)=p_{kj}.
+P(z_{i,s+1}=j \mid z_{i,s}=k) = p_{kj}
 $$
 
 At an intermediate station, the additional dwell time is:
 
 $$
-W_{i,s}\sim\operatorname{Exponential}(\text{mean}=0.8).
+W_{i,s} \sim \operatorname{Exp}(0.8)
 $$
+
+where $0.8$ is the mean dwell time in minutes.
 
 The actual departure time is:
 
@@ -87,7 +87,7 @@ A^{\mathrm{act}}_{i,s}
 W^{\mathrm{sch}}_{i,s}
 +
 W_{i,s}
-\right).
+\right)
 $$
 
 The simplified headway constraint is:
@@ -95,7 +95,7 @@ The simplified headway constraint is:
 $$
 D^{\mathrm{act}}_{i,s}
 \geq
-D^{\mathrm{act}}_{i-1,s}+h.
+D^{\mathrm{act}}_{i-1,s} + h
 $$
 
 ## 4. Numerical and simulation method
