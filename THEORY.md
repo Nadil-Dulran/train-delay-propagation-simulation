@@ -9,9 +9,9 @@ or the minimum headway required behind the preceding service.
 
 The primary quantities of interest are:
 
-- final arrival delay at Panadura;
-- mean final arrival delay over Monte Carlo replications; and
-- the probability that final arrival delay exceeds 10 minutes.
+- Final arrival delay at Panadura;
+- Mean final arrival delay over Monte Carlo replications; and
+- The probability that final arrival delay exceeds 10 minutes.
 
 ## 2. Assumptions and parameters
 
@@ -22,14 +22,16 @@ The following are modelling assumptions, not measured train-level parameters:
    sensitivity scenario.
 3. Operating conditions follow three latent regimes: Low, Moderate, and High.
 4. The regime transition matrix is
-   \[
+
+   $$
    P =
    \begin{bmatrix}
-   0.70 & 0.25 & 0.05\\
-   0.30 & 0.50 & 0.20\\
+   0.70 & 0.25 & 0.05 \\
+   0.30 & 0.50 & 0.20 \\
    0.10 & 0.30 & 0.60
-   \end{bmatrix}.
-   \]
+   \end{bmatrix}
+   $$
+
 5. Running-time noise is normally distributed with mean 0 and standard
    deviation 1 minute.
 6. Extra dwell time is exponentially distributed with mean 0.8 minutes.
@@ -40,66 +42,73 @@ The following are modelling assumptions, not measured train-level parameters:
 10. The destination station has an arrival time only.
 
 | Symbol or parameter | Meaning | Units | Default |
-|---|---|---:|---:|
-| \(d^D_{i,s}\) | Departure delay for train \(i\) at station \(s\) | min | scenario-dependent |
-| \(d^A_{i,s}\) | Arrival delay for train \(i\) at station \(s\) | min | scenario-dependent |
-| \(\epsilon_{i,s}\) | Running-time disturbance | min | \(N(0,1^2)\) |
-| \(q_z\) | Regime shock | min | regime range |
-| \(b\) | Recovery buffer | min | 2 |
-| \(W_{i,s}\) | Extra dwell time | min | Exponential(mean 0.8) |
-| \(h\) | Minimum departure headway | min | 3 |
-| \(n\) | Monte Carlo replications | replications | 2,000 |
+|---|---|---|---|
+| $d^D_{i,s}$ | Departure delay for train $i$ at station $s$ | min | scenario-dependent |
+| $d^A_{i,s}$ | Arrival delay for train $i$ at station $s$ | min | scenario-dependent |
+| $\epsilon_{i,s}$ | Running-time disturbance | min | $N(0,1^2)$ |
+| $q_z$ | Regime shock | min | regime range |
+| $b$ | Recovery buffer | min | 2 |
+| $W_{i,s}$ | Extra dwell time | min | Exponential(mean 0.8) |
+| $h$ | Minimum departure headway | min | 3 |
+| $n$ | Monte Carlo replications | replications | 2,000 |
 
 ## 3. Model equations
 
-For train \(i\) travelling from station \(s\) to \(s+1\), the propagated
+For train $i$ travelling from station $s$ to $s+1$, the propagated
 arrival delay is:
 
-\[
+$$
 d^A_{i,s+1}
-= \max\left(0,\ d^D_{i,s}+\epsilon_{i,s}+q_{z_{i,s+1}}-b\right).
-\]
+=
+\max\left(0,\ d^D_{i,s}+\epsilon_{i,s}+q_{z_{i,s+1}}-b\right).
+$$
 
 The operating regime follows the Markov transition rule:
 
-\[
+$$
 \Pr(z_{i,s+1}=j\mid z_{i,s}=k)=p_{kj}.
-\]
+$$
 
 At an intermediate station, the additional dwell time is:
 
-\[
+$$
 W_{i,s}\sim\operatorname{Exponential}(\text{mean}=0.8).
-\]
+$$
 
 The actual departure time is:
 
-\[
+$$
 D^{\mathrm{act}}_{i,s}
-= \max\left(
+=
+\max\left(
 D^{\mathrm{sch}}_{i,s},
-A^{\mathrm{act}}_{i,s}+W^{\mathrm{sch}}_{i,s}+W_{i,s}
+A^{\mathrm{act}}_{i,s}
++
+W^{\mathrm{sch}}_{i,s}
++
+W_{i,s}
 \right).
-\]
+$$
 
 The simplified headway constraint is:
 
-\[
+$$
 D^{\mathrm{act}}_{i,s}
-\geq D^{\mathrm{act}}_{i-1,s}+h.
-\]
+\geq
+D^{\mathrm{act}}_{i-1,s}+h.
+$$
 
 ## 4. Numerical and simulation method
 
 The notebook uses a discrete-time, station-by-station simulation. Each
 replication:
 
-1. processes the five services in timetable order;
-2. samples the next Markov operating regime;
-3. samples running-time and dwell-time disturbances;
-4. propagates delay to the next station;
-5. applies the scheduled departure and headway constraints; and
-6. records each train's final Panadura arrival delay.
+1. Processes the five services in timetable order;
+2. Samples the next Markov operating regime;
+3. Samples running-time and dwell-time disturbances;
+4. Propagates delay to the next station;
+5. Applies the scheduled departure and headway constraints; and
+6. Records each train's final Panadura arrival delay.
 
 The simulation is implemented in Python using NumPy and pandas. A master seed
 of `20261028` makes the reported experiments reproducible.
@@ -107,25 +116,30 @@ of `20261028` makes the reported experiments reproducible.
 For the mean final delay, the notebook reports the normal 95% Monte Carlo
 confidence interval:
 
-\[
+$$
 \bar{x}\pm1.96\frac{s}{\sqrt{n}}.
-\]
+$$
 
-For the severe-delay probability, where severe delay means \(x>10\) minutes,
+For the severe-delay probability, where severe delay means $x>10$ minutes,
 the notebook reports a 95% Wilson interval:
 
-\[
-\frac{\hat p+z^2/(2n)\pm
-z\sqrt{\hat p(1-\hat p)/n+z^2/(4n^2)}}{1+z^2/n},
+$$
+\frac{
+\hat p+z^2/(2n)
+\pm
+z\sqrt{\hat p(1-\hat p)/n+z^2/(4n^2)}
+}{
+1+z^2/n
+},
 \qquad z=1.96.
-\]
+$$
 
 ## 5. Verification
 
 | Check | Expected result | Obtained result |
 |---|---|---|
 | Transition matrix validity | Non-negative rows summing to 1 | Passed |
-| Analytical stationary distribution | \(\pi P=\pi\) | Low 0.4242, Moderate 0.3485, High 0.2273 |
+| Analytical stationary distribution | $\pi P=\pi$ | Low 0.4242, Moderate 0.3485, High 0.2273 |
 | Empirical transition test | Maximum absolute error below 0.015 using 200,000 transitions | 0.0054; passed |
 | Deterministic limiting case | Reproduce supplied timetable exactly | Passed |
 | Minimum departure headway | Every departure gap is at least 3 minutes | Passed |
@@ -138,9 +152,9 @@ reproduces the timetable input rather than introducing an unexplained offset.
 
 Two controlled experiments are included:
 
-1. **Recovery-buffer sensitivity:** buffers of 0, 1, 2, 3, and 5 minutes are
+1. **Recovery-buffer sensitivity:** Buffers of 0, 1, 2, 3, and 5 minutes are
    compared with zero initial delay.
-2. **Initial-delay sensitivity:** initial delays of 0, 5, and 10 minutes are
+2. **Initial-delay sensitivity:** Initial delays of 0, 5, and 10 minutes are
    compared while holding the recovery buffer at 2 minutes.
 
 Each scenario uses 2,000 replications and confidence intervals. The results
