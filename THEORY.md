@@ -70,7 +70,7 @@ $$
 At an intermediate station, the additional dwell time is:
 
 $$
-W_{i,s} \sim \operatorname{Exp}(0.8)
+W_{i,s} \sim Exp(0.8)
 $$
 
 where $0.8$ is the mean dwell time in minutes.
@@ -78,15 +78,10 @@ where $0.8$ is the mean dwell time in minutes.
 The actual departure time is:
 
 $$
-D^{\mathrm{act}}_{i,s}
-=
+D^{act}_{i,s} =
 \max\left(
-D^{\mathrm{sch}}_{i,s},
-A^{\mathrm{act}}_{i,s}
-+
-W^{\mathrm{sch}}_{i,s}
-+
-W_{i,s}
+D^{sch}_{i,s},
+A^{act}_{i,s} + W^{sch}_{i,s} + W_{i,s}
 \right)
 $$
 
