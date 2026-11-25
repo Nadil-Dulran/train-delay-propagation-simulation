@@ -1,14 +1,16 @@
 # Monte Carlo Analysis of Train-Delay Propagation
 
-[One-sentence pitch: what this simulation does and the question it answers.]
+A Monte Carlo simulation of five Maradana–Panadura train services that explores how initial delays, operating disturbances and timetable recovery buffers affect arrival delays.
 
-**[Live demo](https://nadil-dulran.github.io/train-delay-propagation-simulation/)
+## Project Links
 
-** · [![Open in Colab](https://colab.research.google.com/drive/1mBkqzn0Sc3l0_lTdz1HM4wy8oEuleFlQ?usp=sharing)]
+- **[Live Demo](https://nadil-dulran.github.io/train-delay-propagation-simulation/)**
+- [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1mBkqzn0Sc3l0_lTdz1HM4wy8oEuleFlQ?usp=sharing)
+- [Open Notebook in GitHub](https://github.com/Nadil-Dulran/train-delay-propagation-simulation/blob/main/notebook/SE4042_IT23161788_Gamage_Notebook.ipynb)
 
-** · [![Open in Colab Notebook in GitHub](https://colab.research.google.com/github/Nadil-Dulran/train-delay-propagation-simulation/blob/main/notebook/SE4042_IT23161788_Gamage_Notebook.ipynb)]
+### Web Demo Screenshot
 
-![Screenshot of the web demo](figures/demo-screenshot.png)
+![Screenshot of the web demo](figures/demo-screenshot/Webdemo-screenshot01.png)
 
 ## The problem
 
@@ -101,8 +103,6 @@ delay at Maradana increases both measures.
 | 2 | 2.202 | 2.8% |
 | 3 | 0.944 | 0.3% |
 | 5 | 0.106 | 0.0% |
-
-Related plots are available in [`figures/`](figures/).
 
 ## Limitations and future work
 
